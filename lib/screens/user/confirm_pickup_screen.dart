@@ -88,7 +88,15 @@ class _ConfirmPickupScreenState extends State<ConfirmPickupScreen> {
                         builder: (_) =>
                             EditUserInfoScreen(username: widget.username),
                       ),
-                    ).then((_) => _fetchUserInfo());
+                    ).then((result) {
+                      if (result != null && result is Map) {
+                        setState(() {
+                          fullName = result['name'];
+                          phone = result['phone'];
+                          email = result['email'];
+                        });
+                      }
+                    });
                   },
                 )
               ],

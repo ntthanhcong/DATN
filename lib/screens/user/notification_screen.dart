@@ -57,8 +57,6 @@ class NotificationScreen extends StatelessWidget {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10)),
               child: ListTile(
-                leading: const Icon(Icons.notifications_active,
-                    color: Colors.orange),
                 title: Text(data['title'] ?? 'Thông báo',
                     maxLines: 1, overflow: TextOverflow.ellipsis),
                 subtitle: Text(

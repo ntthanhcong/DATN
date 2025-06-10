@@ -217,7 +217,7 @@ class _MomoPaymentScreenState extends State<MomoPaymentScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Thông tin thanh toán",
+                    const Text("Thông tin hành khách",
                         style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),

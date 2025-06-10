@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 
@@ -11,6 +12,7 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _authService = AuthService();
 
+  final usernameController = TextEditingController(); // thêm
   final phoneController = TextEditingController();
   final otpController = TextEditingController();
   final passwordController = TextEditingController();
@@ -42,22 +44,61 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 
+  Future<String?> getUsernameByPhone(String phone) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('phone', isEqualTo: phone)
+        .limit(1)
+        .get();
+
+    if (snapshot.docs.isNotEmpty) {
+      return snapshot.docs.first.data()['username'];
+    }
+    return null;
+  }
+
+  Future<String?> getPhoneByUsername(String username) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(username)
+        .get();
+    if (doc.exists) {
+      return doc.data()?['phone'];
+    }
+    return null;
+  }
+
   Future<void> handleSendOTP() async {
+    final username = usernameController.text.trim();
     final rawPhone = phoneController.text.trim();
 
-    // Kiểm tra định dạng số điện thoại
+    if (username.isEmpty || rawPhone.isEmpty) {
+      showSnack("⚠️ Vui lòng nhập cả tên người dùng và số điện thoại!");
+      return;
+    }
+
     final regex = RegExp(r'^0[0-9]{9,10}$');
     if (!regex.hasMatch(rawPhone)) {
       showSnack("⚠️ Số điện thoại không hợp lệ. Vui lòng nhập đúng định dạng!");
       return;
     }
 
-    final phone =
-        '+84' + rawPhone.substring(1); // chuyển 0xxxxxxx -> +84xxxxxxxx
+    final phone = '+84' + rawPhone.substring(1);
+
+    // Lấy phone theo username để so sánh
+    final phoneFromUsername = await getPhoneByUsername(username);
+    if (phoneFromUsername == null) {
+      showSnack("❌ Không tìm thấy tài khoản với tên người dùng này!");
+      return;
+    }
+
+    if (phoneFromUsername != phone) {
+      showSnack("❌ Số điện thoại không khớp với tên người dùng!");
+      return;
+    }
 
     setState(() => isLoading = true);
 
-    // Kiểm tra số điện thoại đã tồn tại
     final exists = await _authService.checkPhoneExists(phone);
     if (!exists) {
       setState(() => isLoading = false);
@@ -65,7 +106,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
 
-    // Gửi OTP
     final error = await _authService.sendPasswordResetOTP(phone);
     setState(() {
       isLoading = false;
@@ -91,21 +131,47 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   Future<void> handleResetPassword() async {
-    final phone = phoneController.text.trim();
+    final username = usernameController.text.trim();
+    final rawPhone = phoneController.text.trim();
     final newPassword = passwordController.text.trim();
     final confirmPassword = confirmPasswordController.text.trim();
+
+    if (username.isEmpty || rawPhone.isEmpty) {
+      showSnack("⚠️ Vui lòng nhập cả tên người dùng và số điện thoại!");
+      return;
+    }
 
     if (newPassword != confirmPassword) {
       showSnack("❌ Mật khẩu xác nhận không khớp!");
       return;
     }
 
-    final success = await _authService.resetPassword(phone, newPassword);
+    final regex = RegExp(r'^0[0-9]{9,10}$');
+    if (!regex.hasMatch(rawPhone)) {
+      showSnack("⚠️ Số điện thoại không hợp lệ!");
+      return;
+    }
+
+    final phone = '+84' + rawPhone.substring(1);
+
+    // Lấy phone theo username
+    final phoneFromUsername = await getPhoneByUsername(username);
+    if (phoneFromUsername == null) {
+      showSnack("❌ Không tìm thấy tài khoản với tên người dùng này!");
+      return;
+    }
+
+    if (phoneFromUsername != phone) {
+      showSnack("❌ Số điện thoại không khớp với tên người dùng!");
+      return;
+    }
+
+    final success = await _authService.resetPassword(username, newPassword);
     if (success) {
       showSnack("🔐 Đặt lại mật khẩu thành công!");
       Navigator.pop(context);
     } else {
-      showSnack("❌ Không tìm thấy tài khoản với số điện thoại này!");
+      showSnack("❌ Đặt lại mật khẩu thất bại!");
     }
   }
 
@@ -116,7 +182,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       child: TextField(
         controller: controller,
         obscureText: isPassword,
-        keyboardType: TextInputType.text,
+        keyboardType: isPassword ? TextInputType.text : TextInputType.text,
         decoration: InputDecoration(
           prefixIcon: icon != null ? Icon(icon) : null,
           hintText: hint,
@@ -142,6 +208,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             : SingleChildScrollView(
                 child: Column(
                   children: [
+                    _buildTextField(
+                        "Tên người dùng (username)", usernameController,
+                        icon: Icons.person),
+                    const SizedBox(height: 10),
+                    const Text("Và"),
+                    const SizedBox(height: 10),
                     _buildTextField("Số điện thoại", phoneController,
                         icon: Icons.phone),
                     ElevatedButton(

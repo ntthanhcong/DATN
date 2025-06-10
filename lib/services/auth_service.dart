@@ -149,10 +149,14 @@ class AuthService {
     try {
       final userDoc = _firestore.collection('users').doc(username);
       final snapshot = await userDoc.get();
-      if (!snapshot.exists) return false;
+      if (!snapshot.exists) {
+        print("User không tồn tại: $username");
+        return false;
+      }
       await userDoc.update({'password': newPassword});
       return true;
-    } catch (_) {
+    } catch (e) {
+      print("Lỗi reset password: $e");
       return false;
     }
   }

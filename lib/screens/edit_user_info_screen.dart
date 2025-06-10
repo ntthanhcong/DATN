@@ -38,15 +38,12 @@ class _EditUserInfoScreenState extends State<EditUserInfoScreen> {
   }
 
   Future<void> _saveInfo() async {
-    await FirebaseFirestore.instance
-        .collection('users')
-        .doc(widget.username)
-        .update({
+    Navigator.pop(context, {
       'name': _nameController.text,
       'email': _emailController.text,
       'phone': _phoneController.text,
+      'idCard': _idCardController.text,
     });
-    Navigator.pop(context);
   }
 
   @override
